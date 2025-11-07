@@ -47,19 +47,25 @@ clone_source() {
 }
 
 load_custom_feeds() {
-    log "加载自定义 feeds 配置..."
-    cd "$BUILD_DIR"  	    
-    # 加载自定义 feeds.conf
-    if [ -f "$SCRIPT_DIR/$FEEDS_CONF" ]; then
-        log "使用自定义 feeds 配置"
-        cp "$SCRIPT_DIR/$FEEDS_CONF" feeds.conf.default
+    log "加载自定义配置..."
+    cd "$BUILD_DIR"
+    # 复制文件目录
+    if [ -d "$SCRIPT_DIR/files" ]; then
+        log "复制自定义文件"
+        cp -r "$SCRIPT_DIR/files" .
     fi
-    
-    # 执行自定义脚本1
-    if [ -f "$SCRIPT_DIR/$DIY_P1_SH" ]; then
-        log "执行自定义脚本1"
-        chmod +x "$SCRIPT_DIR/$DIY_P1_SH"
-        "$SCRIPT_DIR/$DIY_P1_SH"
+
+    # 复制配置文件
+    if [ -f "$SCRIPT_DIR/$CONFIG_FILE" ]; then
+        log "使用自定义配置文件"
+        cp "$SCRIPT_DIR/$CONFIG_FILE" .config
+    fi
+
+    # 执行自定义脚本2
+    if [ -f "$SCRIPT_DIR/$DIY_P2_SH" ]; then
+        log "执行自定义脚本2"
+        chmod +x "$SCRIPT_DIR/$DIY_P2_SH"
+        "$SCRIPT_DIR/$DIY_P2_SH"
     fi
 }
 
