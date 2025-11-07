@@ -73,7 +73,7 @@ clean_feeds_cache() {
     log "清理旧的 feeds 缓存..."
     cd "$BUILD_DIR"
     rm -rf feeds/*
-    rm -rf tmp .config* dl feeds/*.tmp
+    rm -rf tmp dl feeds/*.tmp
     rm -rf feeds/argon.tmp
 }
 
