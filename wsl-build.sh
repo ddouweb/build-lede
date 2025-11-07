@@ -64,16 +64,16 @@ load_custom_feeds() {
 }
 
 clean_feeds_cache() {
-    log "🚀 [1/4] 清理旧的 feeds 缓存..."
+    log "清理旧的 feeds 缓存..."
     cd "$BUILD_DIR"
-    rm -rf feeds/* feeds.conf feeds.conf.default
+    rm -rf feeds/*
     rm -rf tmp .config* dl feeds/*.tmp
     rm -rf feeds/argon.tmp
 }
 
 #  更新和安装 feeds
 update_feeds() {
-    log "🚀 [2/4] Updating and installing feeds..."
+    log "Updating and installing feeds..."
     cd "$BUILD_DIR"
     ./scripts/feeds clean
     ./scripts/feeds update -a
@@ -82,7 +82,7 @@ update_feeds() {
 }
 
 update_feeds_index() {
-    log "📦 [3/4] Creating feed index files..."
+    log "Creating feed index files..."
     cd "$BUILD_DIR"
     make package/symlinks
     make package/feeds/luci/index
