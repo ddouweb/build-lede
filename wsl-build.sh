@@ -146,12 +146,34 @@ download_packages() {
 
 fix_default_ip() {
     cd "$BUILD_DIR"
-    echo "最后修改默认 IP 地址为 10.0.0.1..."
-    sed -i 's/192\.168\.1\.1/10.0.0.1/g' package/base-files/files/bin/config_generate || true
-    sed -i 's/192\.168\./10.0./g' package/base-files/files/bin/config_generate || true
-	sed -i 's/192\.168\.1\.1/10.0.0.1/g' package/base-files/luci/bin/config_generate || true
-	sed -i 's/192\.168\./10.0./g' package/base-files/luci/bin/config_generate || true
+    log "🛠 最后修改默认 LAN IP 为 10.0.0.1..."
+
+    # 修改 base-files
+    if [ -f package/base-files/files/bin/config_generate ]; then
+        sed -i 's/192\.168\.1\.1/10.0.0.1/g' package/base-files/files/bin/config_generate
+		sed -i 's/192\.168\./10.0./g' package/base-files/files/bin/config_generate || true
+        log "✔ 已修改 package/base-files/files/bin/config_generate"
+    fi
+	
+	if [ -f package/base-files/luci/bin/config_generate ]; then
+        sed -i 's/192\.168\.1\.1/10.0.0.1/g' package/base-files/luci/bin/config_generate
+		sed -i 's/192\.168\./10.0./g' package/base-files/luci/bin/config_generate || true
+        log "✔ 已修改 package/base-files/luci/bin/config_generate"
+    fi
+
+    # 修改 luci-base 可能的版本
+    find feeds/luci -type f -path "*/luci-base/*/config_generate" -exec \
+        sed -i 's/192\.168\.1\.1/10.0.0.1/g' {} \; 2>/dev/null || true
+
+    # 额外检查可能存在的 uci-defaults 脚本
+    grep -R "192.168.1.1" feeds/ package/ | grep uci-defaults | while read -r file; do
+        log "⚙ 检测到 UCI 默认脚本含默认IP：$file"
+        sed -i 's/192\.168\.1\.1/10.0.0.1/g' "$file"
+    done
+
+    log "✅ 默认 LAN IP 修改完成！"
 }
+
 
 compile_firmware() {
     log "开始编译固件..."
