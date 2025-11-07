@@ -149,9 +149,10 @@ fix_default_ip() {
     echo "最后修改默认 IP 地址为 10.0.0.1..."
     sed -i 's/192\.168\.1\.1/10.0.0.1/g' package/base-files/files/bin/config_generate || true
     sed -i 's/192\.168\./10.0./g' package/base-files/files/bin/config_generate || true
+	sed -i 's/192\.168\.1\.1/10.0.0.1/g' package/base-files/luci/bin/config_generate || true
+	sed -i 's/192\.168\./10.0./g' package/base-files/luci/bin/config_generate || true
 }
 
-# 7. 编译固件（WSL 优化版）
 compile_firmware() {
     log "开始编译固件..."
     cd "$BUILD_DIR"
@@ -182,7 +183,6 @@ compile_firmware() {
     log "编译完成！"
 }
 
-# 8. 整理文件
 organize_files() {
     log "整理输出文件..."
     
@@ -220,7 +220,7 @@ main() {
     update_feeds_index
     load_custom_config
     download_packages
-	  fix_default_ip
+	fix_default_ip
     compile_firmware
     organize_files
     
