@@ -297,7 +297,7 @@ main() {
 	load_custom_config
     #clean_feeds_cache
     update_feeds
-    update_feeds_index
+    #update_feeds_index
     
     download_packages
 	fix_default_ip
