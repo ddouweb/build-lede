@@ -5,7 +5,9 @@
 REPO_URL="https://github.com/coolsnowwolf/lede"
 REPO_BRANCH="master"
 FEEDS_CONF="feeds.conf.default"
+REMOTE_FEEDS_CONF="https://raw.githubusercontent.com/ddouweb/build-lede/refs/heads/main/feeds.conf.default"
 CONFIG_FILE="config"
+REMOTE_CONFIG_FILE="https://raw.githubusercontent.com/ddouweb/build-lede/refs/heads/main/config"
 DIY_P1_SH="diy-part1.sh"
 DIY_P2_SH="diy-part2.sh"
 WORK_DIR="$HOME"  # 使用用户目录，避免权限问题
@@ -46,7 +48,53 @@ clone_source() {
     fi
 }
 
+
+# 下载远程文件
+download_remote_file() {
+    local url="$1"
+    local output="$2"
+    local description="$3"
+    
+    if [ -z "$url" ] || [[ "$url" == "https://example.com/"* ]]; then
+        warn "未配置 $description URL，跳过下载"
+        return 1
+    fi
+    
+    log "下载 $description..."
+    if command -v curl >/dev/null 2>&1; then
+        if curl -fsSL -o "$output" "$url"; then
+            log "$description 下载成功"
+            return 0
+        else
+            warn "$description 下载失败: $url"
+            return 1
+        fi
+    elif command -v wget >/dev/null 2>&1; then
+        if wget -q -O "$output" "$url"; then
+            log "$description 下载成功"
+            return 0
+        else
+            warn "$description 下载失败: $url"
+            return 1
+        fi
+    else
+        warn "未找到 curl 或 wget，无法下载远程文件"
+        return 1
+    fi
+}
+
+download_remote_configs() {
+	log "下载远程配置文件..."
+	if [ -f "$SCRIPT_DIR/$CONFIG_FILE" ]; then
+        download_remote_file "$REMOTE_FEEDS_CONF" "$SCRIPT_DIR/$FEEDS_CONF" "远程 feeds 配置"
+    fi
+	if [ -f "$SCRIPT_DIR/$CONFIG_FILE" ]; then
+        download_remote_file "$REMOTE_CONFIG_FILE" "$SCRIPT_DIR/$CONFIG_FILE" "远程编译配置"
+    fi
+}
+
 load_custom_feeds() {
+    download_remote_configs
     log "加载自定义配置..."
     cd "$BUILD_DIR"
     # 复制文件目录
@@ -84,7 +132,7 @@ update_feeds() {
     ./scripts/feeds clean
     ./scripts/feeds update -a
     ./scripts/feeds install -a
-    log "✅ Feeds updated and installed"
+    log "Feeds updated and installed"
 }
 
 update_feeds_index() {
@@ -95,7 +143,7 @@ update_feeds_index() {
     make package/feeds/packages/index
     make package/feeds/routing/index
     make package/feeds/telephony/index
-    echo "✅ Feed index built successfully"
+    echo "Feed index built successfully"
 }
 
 load_custom_config() {
@@ -152,19 +200,19 @@ download_packages() {
 
 fix_default_ip() {
     cd "$BUILD_DIR"
-    log "🛠 最后修改默认 LAN IP 为 10.0.0.1..."
+    log "最后修改默认 LAN IP 为 10.0.0.1..."
 
     # 修改 base-files
     if [ -f package/base-files/files/bin/config_generate ]; then
         sed -i 's/192\.168\.1\.1/10.0.0.1/g' package/base-files/files/bin/config_generate
 		sed -i 's/192\.168\./10.0./g' package/base-files/files/bin/config_generate || true
-        log "✔ 已修改 package/base-files/files/bin/config_generate"
+        log "已修改 package/base-files/files/bin/config_generate"
     fi
 	
 	if [ -f package/base-files/luci/bin/config_generate ]; then
         sed -i 's/192\.168\.1\.1/10.0.0.1/g' package/base-files/luci/bin/config_generate
 		sed -i 's/192\.168\./10.0./g' package/base-files/luci/bin/config_generate || true
-        log "✔ 已修改 package/base-files/luci/bin/config_generate"
+        log "已修改 package/base-files/luci/bin/config_generate"
     fi
 
     # 修改 luci-base 可能的版本
@@ -173,11 +221,11 @@ fix_default_ip() {
 
     # 额外检查可能存在的 uci-defaults 脚本
     grep -R "192.168.1.1" feeds/ package/ | grep uci-defaults | while read -r file; do
-        log "⚙ 检测到 UCI 默认脚本含默认IP：$file"
+        log "检测到 UCI 默认脚本含默认IP：$file"
         sed -i 's/192\.168\.1\.1/10.0.0.1/g' "$file"
     done
 
-    log "✅ 默认 LAN IP 修改完成！"
+    log "默认 LAN IP 修改完成！"
 }
 
 
