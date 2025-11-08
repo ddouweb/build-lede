@@ -233,9 +233,7 @@ fix_default_ip() {
 compile_firmware() {
     log "开始编译固件..."
     cd "$BUILD_DIR"
-
-	make menuconfig
-    
+	
     local cpu_cores=$(nproc)
     log "使用 $cpu_cores 个CPU核心编译"
     
@@ -295,9 +293,7 @@ main() {
     clone_source
     load_custom_feeds
 	load_custom_config
-    #clean_feeds_cache
     update_feeds
-    #update_feeds_index
     
     download_packages
 	fix_default_ip
