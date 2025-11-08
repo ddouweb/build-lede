@@ -139,7 +139,6 @@ update_feeds() {
 update_feeds_index() {
     log "Creating feed index files..."
     cd "$BUILD_DIR"
-	make menuconfig
     make package/symlinks
     make package/feeds/luci/index
     make package/feeds/packages/index
@@ -295,10 +294,11 @@ main() {
     # 执行各个步骤
     clone_source
     load_custom_feeds
+	load_custom_config
     #clean_feeds_cache
     update_feeds
     update_feeds_index
-    load_custom_config
+    
     download_packages
 	fix_default_ip
     compile_firmware
