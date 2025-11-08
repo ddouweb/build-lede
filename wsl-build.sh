@@ -14,7 +14,7 @@ WORK_DIR="$HOME"  # 使用用户目录，避免权限问题
 BUILD_DIR="$WORK_DIR/lede"
 TZ="Asia/Shanghai"
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$WORK_DIR"
 
 # 颜色输出
 RED='\033[0;31m'
@@ -117,6 +117,7 @@ load_custom_feeds() {
     fi
 }
 
+#暂不使用
 clean_feeds_cache() {
     log "清理旧的 feeds 缓存..."
     cd "$BUILD_DIR"
@@ -129,7 +130,7 @@ clean_feeds_cache() {
 update_feeds() {
     log "Updating and installing feeds..."
     cd "$BUILD_DIR"
-    ./scripts/feeds clean
+    #./scripts/feeds clean
     ./scripts/feeds update -a
     ./scripts/feeds install -a
     log "Feeds updated and installed"
@@ -291,7 +292,7 @@ main() {
     # 执行各个步骤
     clone_source
     load_custom_feeds
-    clean_feeds_cache
+    #clean_feeds_cache
     update_feeds
     update_feeds_index
     load_custom_config
