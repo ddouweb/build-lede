@@ -305,10 +305,29 @@ fix_default_ip() {
         sed -i 's/192\.168\.1\.1/10.0.0.1/g' {} \; 2>/dev/null || true
 
     # 额外检查可能存在的 uci-defaults 脚本
-    grep -R "192.168.1.1" feeds/ package/ | grep uci-defaults | while read -r file; do
-        log "检测到 UCI 默认脚本含默认IP：$file"
-        sed -i 's/192\.168\.1\.1/10.0.0.1/g' "$file"
+    # 1) 查找包含 192.168.1.1 的文件，并且路径中包含 uci-defaults，再替换为 10.0.0.1
+    grep -RIl "192\.168\.1\.1" feeds/ package/ 2>/dev/null | grep 'uci-defaults' || true | while IFS= read -r file; do
+        # grep pipeline 可能输出空行，跳过
+        [ -z "${file:-}" ] && continue
+        echo "检测到 UCI 默认脚本含默认IP：$file"
+        if sed -i 's/192\.168\.1\.1/10.0.0.1/g' "$file"; then
+            echo "已修改 $file"
+        else
+            echo "WARN: 无法修改 $file" >&2
+        fi
     done
+
+    # 2) 可选：把形如 192.168.xxx. 的网段替换为 10.0.xxx.
+    grep -RIl "192\.168\." feeds/ package/ 2>/dev/null | grep 'uci-defaults' || true | while IFS= read -r file; do
+        [ -z "${file:-}" ] && continue
+        if sed -i 's/192\.168\./10.0./g' "$file" 2>/dev/null; then
+            echo "已替换 192.168. -> 10.0. 在 $file"
+        fi
+    done
+
+    log "处理完成。建议检查是否还有遗留的 192.168 字符串："
+    grep -Rn "192\.168\." feeds/ package/ || echo "未找到残留匹配"
+    
 
     log "默认 LAN IP 修改完成！"
 }
