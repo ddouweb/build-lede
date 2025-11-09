@@ -41,8 +41,8 @@ clone_source() {
         log "源码已存在，拉取更新..."
         cd "$BUILD_DIR"
         # 丢弃本地修改
-		    git checkout .
-		    git pull
+        git checkout .
+        git pull
     else
         git clone $REPO_URL -b $REPO_BRANCH "$BUILD_DIR"
     fi
@@ -84,11 +84,11 @@ download_remote_file() {
 }
 
 download_remote_configs() {
-	log "下载远程配置文件..."
-	if [ -f "$SCRIPT_DIR/$CONFIG_FILE" ]; then
+    log "下载远程配置文件..."
+    if [ -f "$SCRIPT_DIR/$CONFIG_FILE" ]; then
         download_remote_file "$REMOTE_FEEDS_CONF" "$SCRIPT_DIR/$FEEDS_CONF" "远程 feeds 配置"
     fi
-	if [ -f "$SCRIPT_DIR/$CONFIG_FILE" ]; then
+    if [ -f "$SCRIPT_DIR/$CONFIG_FILE" ]; then
         download_remote_file "$REMOTE_CONFIG_FILE" "$SCRIPT_DIR/$CONFIG_FILE" "远程编译配置"
     fi
 }
@@ -114,6 +114,55 @@ load_custom_feeds() {
         log "执行自定义脚本2"
         chmod +x "$SCRIPT_DIR/$DIY_P2_SH"
         "$SCRIPT_DIR/$DIY_P2_SH"
+    fi
+}
+
+# 新增：交互式 menuconfig 并备份 .config 到 $SCRIPT_DIR/$CONFIG_FILE
+run_menuconfig_and_backup() {
+    log "准备进入交互式 make menuconfig（如果终端支持）..."
+    cd "$BUILD_DIR" || return 1
+
+    # 如果用户仓库里有 config，先复制到源码以便 menuconfig 读取；否则生成默认
+    if [ -f "$SCRIPT_DIR/$CONFIG_FILE" ]; then
+        log "检测到 $SCRIPT_DIR/$CONFIG_FILE，复制到源码目录作为初始 .config"
+        cp "$SCRIPT_DIR/$CONFIG_FILE" .config
+    else
+        log "未找到用户配置片段，生成默认配置: make defconfig"
+        make defconfig
+    fi
+
+    # 判断是不是交互式终端（有 tty）
+    if [ -t 0 ]; then
+        log "检测到交互式终端，启动 make menuconfig。请在界面中编辑并保存退出。"
+        # 运行 menuconfig（ncurses），失败不致命
+        if ! make menuconfig; then
+            warn "make menuconfig 以非0码退出（可能被手动中断）"
+        fi
+
+        # 保存并备份到 $SCRIPT_DIR/$CONFIG_FILE
+        if [ -f .config ]; then
+            local timestamp
+            timestamp=$(date +%Y%m%d-%H%M%S)
+            if [ -f "$SCRIPT_DIR/$CONFIG_FILE" ]; then
+                cp "$SCRIPT_DIR/$CONFIG_FILE" "$SCRIPT_DIR/$CONFIG_FILE.bak.$timestamp" 2>/dev/null || true
+                log "已备份旧配置为 $SCRIPT_DIR/$CONFIG_FILE.bak.$timestamp"
+            fi
+            cp .config "$SCRIPT_DIR/$CONFIG_FILE"
+            log "已将 .config 复制/覆盖到 $SCRIPT_DIR/$CONFIG_FILE"
+        else
+            warn "menuconfig 退出后未生成 .config，未执行备份"
+        fi
+
+        # 为了防止后续自动化步骤被交互项卡住，尝试非交互式运行 oldconfig 接受默认
+        if command -v yes >/dev/null 2>&1; then
+            log "运行 non-interactive make oldconfig（接受默认选项）以确保构建不会卡住"
+            yes '' | make oldconfig >/dev/null 2>&1 || warn "make oldconfig 返回非0（可忽略）"
+        else
+            log "系统未安装 yes，尝试直接 make oldconfig"
+            make oldconfig >/dev/null 2>&1 || warn "make oldconfig 返回非0（可忽略）"
+        fi
+    else
+        warn "当前不是交互式终端，跳过 make menuconfig。如果想手动运行，请进入 WSL 终端执行 make menuconfig 并在保存后脚本会备份 .config。"
     fi
 }
 
@@ -171,6 +220,41 @@ load_custom_config() {
     fi
 }
 
+# 新增：（可选）自动合并 .config 片段（此前 assistant 给出的非交互式方案）
+update_dot_config() {
+    log "开始更新 .config（以源码默认配置为基础并合并自定义 config）..."
+    cd "$BUILD_DIR"
+
+    if make defconfig; then
+        log "已生成当前源码默认 .config"
+    else
+        warn "make defconfig 失败，继续尝试合并现有配置"
+    fi
+
+    if [ -f "$SCRIPT_DIR/$CONFIG_FILE" ]; then
+        if [ -f "./scripts/merge_config.sh" ]; then
+            log "使用 scripts/merge_config.sh 合并自定义 config 片段"
+            chmod +x ./scripts/merge_config.sh || true
+            ./scripts/merge_config.sh .config "$SCRIPT_DIR/$CONFIG_FILE" || warn "merge_config.sh 返回非零，可能有失效的选项"
+        else
+            warn "源码中缺少 scripts/merge_config.sh，直接复制 config 到 .config"
+            cp "$SCRIPT_DIR/$CONFIG_FILE" .config || warn "复制 config 失败"
+        fi
+    else
+        log "未检测到自定义 config 片段，保留默认 .config"
+    fi
+
+    if command -v yes >/dev/null 2>&1; then
+        log "执行 non-interactive 的 make oldconfig（接受默认）"
+        yes '' | make oldconfig >/dev/null 2>&1 || warn "make oldconfig 退出码非0（可忽略）"
+    else
+        log "系统无 yes 命令，直接尝试 make oldconfig"
+        make oldconfig >/dev/null 2>&1 || warn "make oldconfig 退出码非0（可忽略）"
+    fi
+
+    log ".config 更新/合并完成"
+}
+
 download_packages() {
     log "下载软件包..."
     cd "$BUILD_DIR"
@@ -206,13 +290,13 @@ fix_default_ip() {
     # 修改 base-files
     if [ -f package/base-files/files/bin/config_generate ]; then
         sed -i 's/192\.168\.1\.1/10.0.0.1/g' package/base-files/files/bin/config_generate
-		sed -i 's/192\.168\./10.0./g' package/base-files/files/bin/config_generate || true
+        sed -i 's/192\.168\./10.0./g' package/base-files/files/bin/config_generate || true
         log "已修改 package/base-files/files/bin/config_generate"
     fi
-	
-	if [ -f package/base-files/luci/bin/config_generate ]; then
+    
+    if [ -f package/base-files/luci/bin/config_generate ]; then
         sed -i 's/192\.168\.1\.1/10.0.0.1/g' package/base-files/luci/bin/config_generate
-		sed -i 's/192\.168\./10.0./g' package/base-files/luci/bin/config_generate || true
+        sed -i 's/192\.168\./10.0./g' package/base-files/luci/bin/config_generate || true
         log "已修改 package/base-files/luci/bin/config_generate"
     fi
 
@@ -233,7 +317,7 @@ fix_default_ip() {
 compile_firmware() {
     log "开始编译固件..."
     cd "$BUILD_DIR"
-	
+    
     local cpu_cores=$(nproc)
     log "使用 $cpu_cores 个CPU核心编译"
     
@@ -292,11 +376,17 @@ main() {
     # 执行各个步骤
     clone_source
     load_custom_feeds
-	load_custom_config
+    load_custom_config
     update_feeds
-    
+
+    # 交互式步骤：如果是交互式终端，会打开 menuconfig 并在保存后把 .config 备份回脚本目录
+    run_menuconfig_and_backup
+
+    # 可选：如果你希望自动合并片段，也可以调用 update_dot_config（非交互场景）
+    # update_dot_config
+
     download_packages
-	fix_default_ip
+    fix_default_ip
     compile_firmware
     organize_files
     
