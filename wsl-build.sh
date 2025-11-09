@@ -396,7 +396,10 @@ main() {
     clone_source
     load_custom_feeds
     load_custom_config
+    
+    clean_feeds_cache
     update_feeds
+    update_feeds_index
 
     # 交互式步骤：如果是交互式终端，会打开 menuconfig 并在保存后把 .config 备份回脚本目录
     run_menuconfig_and_backup
