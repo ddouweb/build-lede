@@ -85,7 +85,7 @@ download_remote_file() {
 
 download_remote_configs() {
     log "下载远程配置文件..."
-    if [ ! -f "$SCRIPT_DIR/$CONFIG_FILE" ]; then
+    if [ ! -f "$SCRIPT_DIR/$FEEDS_CONF" ]; then
         download_remote_file "$REMOTE_FEEDS_CONF" "$SCRIPT_DIR/$FEEDS_CONF" "远程 feeds 配置"
     fi
     if [ ! -f "$SCRIPT_DIR/$CONFIG_FILE" ]; then
