@@ -46,6 +46,7 @@ clone_source() {
     else
         git clone $REPO_URL -b $REPO_BRANCH "$BUILD_DIR"
     fi
+
 }
 
 
@@ -93,7 +94,7 @@ download_remote_configs() {
     fi
 }
 
-load_custom_feeds() {
+load_custom_config() {
     download_remote_configs
     log "加载自定义配置..."
     cd "$BUILD_DIR"
@@ -105,8 +106,13 @@ load_custom_feeds() {
 
     # 复制配置文件
     if [ -f "$SCRIPT_DIR/$CONFIG_FILE" ]; then
-        log "使用自定义配置文件"
+        log "使用自定义config配置文件"
         cp "$SCRIPT_DIR/$CONFIG_FILE" .config
+    fi
+
+    if [ -f "$SCRIPT_DIR/$FEEDS_CONF" ]; then
+        log "使用自定义feeds配置文件"
+        cp "$SCRIPT_DIR/$FEEDS_CONF" feeds.conf.default
     fi
 
     # 执行自定义脚本2
@@ -115,6 +121,36 @@ load_custom_feeds() {
         chmod +x "$SCRIPT_DIR/$DIY_P2_SH"
         "$SCRIPT_DIR/$DIY_P2_SH"
     fi
+}
+
+#暂不使用
+clean_feeds_cache() {
+    log "清理旧的 feeds 缓存..."
+    cd "$BUILD_DIR"
+    rm -rf feeds/*
+    rm -rf tmp dl feeds/*.tmp
+    rm -rf feeds/argon.tmp
+}
+
+#  更新和安装 feeds
+update_feeds() {
+    log "Updating and installing feeds..."
+    cd "$BUILD_DIR"
+    #./scripts/feeds clean
+    ./scripts/feeds update -a
+    ./scripts/feeds install -a
+    log "Feeds updated and installed"
+}
+
+update_feeds_index() {
+    log "Creating feed index files..."
+    cd "$BUILD_DIR"
+    make package/symlinks
+    make package/feeds/luci/index
+    make package/feeds/packages/index
+    make package/feeds/routing/index
+    make package/feeds/telephony/index
+    echo "Feed index built successfully"
 }
 
 # 新增：交互式 menuconfig 并备份 .config 到 $SCRIPT_DIR/$CONFIG_FILE
@@ -163,60 +199,6 @@ run_menuconfig_and_backup() {
         fi
     else
         warn "当前不是交互式终端，跳过 make menuconfig。如果想手动运行，请进入 WSL 终端执行 make menuconfig 并在保存后脚本会备份 .config。"
-    fi
-}
-
-#暂不使用
-clean_feeds_cache() {
-    log "清理旧的 feeds 缓存..."
-    cd "$BUILD_DIR"
-    rm -rf feeds/*
-    rm -rf tmp dl feeds/*.tmp
-    rm -rf feeds/argon.tmp
-}
-
-#  更新和安装 feeds
-update_feeds() {
-    log "Updating and installing feeds..."
-    cd "$BUILD_DIR"
-    #./scripts/feeds clean
-    ./scripts/feeds update -a
-    ./scripts/feeds install -a
-    log "Feeds updated and installed"
-}
-
-update_feeds_index() {
-    log "Creating feed index files..."
-    cd "$BUILD_DIR"
-    make package/symlinks
-    make package/feeds/luci/index
-    make package/feeds/packages/index
-    make package/feeds/routing/index
-    make package/feeds/telephony/index
-    echo "Feed index built successfully"
-}
-
-load_custom_config() {
-    log "加载自定义配置..."
-    cd "$BUILD_DIR"    
-    
-    # 复制文件目录
-    if [ -d "$SCRIPT_DIR/files" ]; then
-        log "复制自定义文件"
-        cp -r "$SCRIPT_DIR/files" .
-    fi
-    
-    # 复制配置文件
-    if [ -f "$SCRIPT_DIR/$CONFIG_FILE" ]; then
-        log "使用自定义配置文件"
-        cp "$SCRIPT_DIR/$CONFIG_FILE" .config
-    fi
-    
-    # 执行自定义脚本2
-    if [ -f "$SCRIPT_DIR/$DIY_P2_SH" ]; then
-        log "执行自定义脚本2"
-        chmod +x "$SCRIPT_DIR/$DIY_P2_SH"
-        "$SCRIPT_DIR/$DIY_P2_SH"
     fi
 }
 
@@ -394,7 +376,7 @@ main() {
     
     # 执行各个步骤
     clone_source
-    load_custom_feeds
+    
     load_custom_config
     
     clean_feeds_cache
