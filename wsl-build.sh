@@ -153,6 +153,13 @@ update_feeds_index() {
     echo "Feed index built successfully"
 }
 
+diy_part2(){
+    cd "$BUILD_DIR"
+    log "禁用autosamba..."
+    sed -i '/autosamba/d' include/target.mk
+    sed -i '/luci-app-ksmbd/d' include/target.mk
+}
+
 # 新增：交互式 menuconfig 并备份 .config 到 $SCRIPT_DIR/$CONFIG_FILE
 run_menuconfig_and_backup() {
     log "准备进入交互式 make menuconfig（如果终端支持）..."
@@ -314,12 +321,6 @@ fix_default_ip() {
     log "默认 LAN IP 修改完成！"
 }
 
-diy_part2(){
-    #禁用autosamba
-    sed -i '/autosamba/d' include/target.mk
-    sed -i '/luci-app-ksmbd/d' include/target.mk
-}
-
 
 compile_firmware() {
     log "开始编译固件..."
@@ -389,6 +390,8 @@ main() {
     update_feeds
     #update_feeds_index
 
+    diy_part2
+
     # 交互式步骤：如果是交互式终端，会打开 menuconfig 并在保存后把 .config 备份回脚本目录
     run_menuconfig_and_backup
 
@@ -397,7 +400,6 @@ main() {
 
     download_packages
     fix_default_ip
-    diy_part2
     compile_firmware
     organize_files
     
