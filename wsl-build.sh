@@ -314,6 +314,12 @@ fix_default_ip() {
     log "默认 LAN IP 修改完成！"
 }
 
+diy_part2(){
+    #禁用autosamba
+    sed -i '/autosamba/d' include/target.mk
+    sed -i '/luci-app-ksmbd/d' include/target.mk
+}
+
 
 compile_firmware() {
     log "开始编译固件..."
@@ -391,6 +397,7 @@ main() {
 
     download_packages
     fix_default_ip
+    diy_part2
     compile_firmware
     organize_files
     
